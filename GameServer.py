@@ -38,11 +38,12 @@ def handle_client(client_socket):
     # Set state to be in game hall after authentication
     state = consts.IN_GAME_HALL_STATE
     client_states[client_socket] = state
-    client_message = client_socket.recv(1024).decode().split()
     room_num = -1 # Room number this client is currently in
     player_num = -1 # player number (either 0 or 1)
 
-    while client_message[0] != consts.EXIT_COMMAND:
+    while True:
+        # Get next message from client
+        client_message = client_socket.recv(1024).decode().split()
         with lock:
             #---------In Game Hall---------
             if client_states[client_socket] == consts.IN_GAME_HALL_STATE:
@@ -91,8 +92,9 @@ def handle_client(client_socket):
                         # Print DNE if the room number is out of bounds
                         client_socket.send("Room does not exist. Please try again.".encode())
                 elif client_message[0] == consts.EXIT_COMMAND:
-                    # /exit
-                    continue
+                    #---------Exit from System---------
+                    client_socket.send(consts.EXIT_MESSAGE.encode())
+                    break
                 else:
                     client_socket.send(consts.UNRECOGNIZED_COMMAND_MESSAGE.encode())
 
@@ -104,6 +106,7 @@ def handle_client(client_socket):
                     guess_record[room_num][player_num] = client_message[1] # record the guess 
                 else:
                     client_socket.send(consts.UNRECOGNIZED_COMMAND_MESSAGE.encode())
+                    continue
                 
                 # if num_guesses[room_num] is 2, that means both players finished guessing
                 if num_guesses[room_num] == 2:
@@ -125,14 +128,8 @@ def handle_client(client_socket):
                     game_halls[room_num] = []
                     guess_record[room_num] = [False, False]
                     num_guesses[room_num] = 0
-    
-        # Get next message from client
-        client_message = client_socket.recv(1024).decode().split()
 
-    #---------Exit from System---------
-    # If the command is /exit, send exit message
-    if client_message[0] == consts.EXIT_COMMAND:
-        client_socket.send(consts.EXIT_MESSAGE.encode())
+    print("client_socket is closing due to an exit")
 
     client_socket.close()
     
@@ -157,10 +154,14 @@ def start_server(port, user_info_file):
 
     # Accept client connections and start a new thread for each client
     while True:
-        client_socket, address = server_socket.accept()
-        print("New connection from", address)
-        client_thread = threading.Thread(target=handle_client, args=(client_socket,))
-        client_thread.start()
+        try:
+            client_socket, address = server_socket.accept()
+            print("New connection from", address)
+
+            client_thread = threading.Thread(target=handle_client, args=(client_socket,))
+            client_thread.start()
+        except KeyboardInterrupt:
+            break
 
 # Start the server
 if __name__ == '__main__':

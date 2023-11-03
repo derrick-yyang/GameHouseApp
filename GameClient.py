@@ -20,11 +20,14 @@ def authenticate_client(client_socket):
 
 def process_commands(client_socket):
 
-    # TODO: instead of checking whether cmd is exit as exit cond for while loop, check that it receives the bye bye instead
-    # TODO: Update code such that the exit is completely handled by the server
-    cmd = input()
-    while cmd != consts.EXIT_COMMAND:
+    response = ""
+    while response != consts.EXIT_MESSAGE:
+        try:
+            cmd = input()
+        except KeyboardInterrupt:
+            break
         client_socket.send(cmd.encode())
+        
         # Receive and process the server response
         response = client_socket.recv(1024).decode()
         print(response)
@@ -35,12 +38,6 @@ def process_commands(client_socket):
             while start_signal != consts.GAME_START_MESSAGE:
                 start_signal = client_socket.recv(1024).decode()
             print(start_signal)
-        cmd = input()
-    
-    # Send final /exit command
-    client_socket.send(cmd.encode())
-    exit_response = client_socket.recv(1024).decode()
-    print(exit_response)
 
 # Function to start the client
 def start_client(server_host, server_port):
