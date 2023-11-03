@@ -5,39 +5,49 @@ import constants as consts
 
 # Function to authenticate the client
 def authenticate_client(client_socket):
-    while True:
-        username = input("Please input your username: ")
-        password = input("Please input your password: ")
-        login_message = "/login {} {}".format(username, password)
-        client_socket.send(login_message.encode())
+    # Authenticate until success message from server is returned
+    try:
+        while True:
+            username = input("Please input your username: ")
+            password = input("Please input your password: ")
+            login_message = "/login {} {}".format(username, password)
+            client_socket.send(login_message.encode())
 
-        # Receive and process the server response
-        response = client_socket.recv(1024).decode()
-        print(response)
+            # Receive and process the server response
+            response = client_socket.recv(1024).decode()
+            print(response)
 
-        if response == consts.AUTHENTICATION_SUCCESSFUL_MESSAGE:
-            return
+            if response == consts.AUTHENTICATION_SUCCESSFUL_MESSAGE:
+                return
+    except:
+        return
 
 def process_commands(client_socket):
 
+    # Send/receive messages to/from server until the exit message from the server is received
     response = ""
     while response != consts.EXIT_MESSAGE:
         try:
             cmd = input()
-        except KeyboardInterrupt:
+            client_socket.send(cmd.encode())
+            
+            # Receive and process the server response
+            response = client_socket.recv(1024).decode()
+
+            print(response)
+        except:
             break
-        client_socket.send(cmd.encode())
-        
-        # Receive and process the server response
-        response = client_socket.recv(1024).decode()
-        print(response)
 
         # wait for the signal of another player to join the room
-        if response == consts.WAIT_FOR_ANOTHER_PLAYER_MESSAGE:
-            start_signal = client_socket.recv(1024).decode()
-            while start_signal != consts.GAME_START_MESSAGE:
+        try:
+            if response == consts.WAIT_FOR_ANOTHER_PLAYER_MESSAGE:
                 start_signal = client_socket.recv(1024).decode()
-            print(start_signal)
+                while start_signal != consts.GAME_START_MESSAGE:
+                    start_signal = client_socket.recv(1024).decode()
+                print(start_signal)
+        except:
+            continue
+    print("Client ends")
 
 # Function to start the client
 def start_client(server_host, server_port):
